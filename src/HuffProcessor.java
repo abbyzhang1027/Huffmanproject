@@ -52,30 +52,35 @@ public class HuffProcessor {
 		
 		in.reset();
 		writeCompressedBits(codings,in,out);
-		out.writeBits(BITS_PER_WORD + 1,PSEUDO_EOF);	
+//		out.writeBits(BITS_PER_WORD+1,PSEUDO_EOF);	
 		out.close();
 	}
 	private void writeCompressedBits(String[] codings, BitInputStream in, BitOutputStream out) {
 		while(true) {
 			int oneChar = in.readBits(BITS_PER_WORD);
-			if (oneChar == -1) break;
+			if (oneChar == -1) {
+//				out.writeBits(BITS_PER_WORD+1,PSEUDO_EOF);	
+				break;
+			}
 			String code = codings[oneChar];
 			out.writeBits(code.length(), Integer.parseInt(code,2));
 		}	
+		String code = codings[PSEUDO_EOF];
+		out.writeBits(code.length(), Integer.parseInt(code,2));
 	}
 	private void writeHeader(HuffNode root, BitOutputStream out) {
 		if (root != null) {
-			if (root.myLeft!=null||root.myRight!=null) {
+			if(root.myLeft==null&&root.myRight==null){
+				out.writeBits(1, 1);
+				out.writeBits(BITS_PER_WORD + 1, root.myValue);
+				if (myDebugLevel >= DEBUG_HIGH) {
+					System.out.println("wrote leaf for tree "+root.myValue);
+				}
+			}
+			else {
 				out.writeBits(1, 0);
 				writeHeader(root.myLeft,out);
 				writeHeader(root.myRight,out);
-			}
-			else if(root.myLeft==null&&root.myRight==null){
-				out.writeBits(1, 1);
-				out.writeBits(BITS_PER_WORD + 1, root.myValue);
-//				if (myDebugLevel >= DEBUG_HIGH) {
-//					System.out.println("wrote leaf for tree "+root.myValue);
-//				}
 			}
 		}
 	}	
@@ -85,11 +90,9 @@ public class HuffProcessor {
 		return codes;
 	}
 	private void doTrails(String[] codes, HuffNode t, String thusfar) {
-		int encodedct = 0;
 		if (t != null) {
 			if (t.myLeft==null&&t.myRight==null) {
 				codes[t.myValue] = thusfar;
-				encodedct+=1;
 				if (myDebugLevel >= DEBUG_LOW) {
 					System.out.printf("encoding for %d is %s%n",t.myValue,thusfar);
 				}
