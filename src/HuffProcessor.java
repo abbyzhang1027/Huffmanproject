@@ -55,6 +55,13 @@ public class HuffProcessor {
 //		out.writeBits(BITS_PER_WORD+1,PSEUDO_EOF);	
 		out.close();
 	}
+	/**
+	 * write the encoding for each eight-bit character/chunk followed
+	 * by the encoding for PSEUDO_EOF
+	 * @param codings
+	 * @param in
+	 * @param out
+	 */
 	private void writeCompressedBits(String[] codings, BitInputStream in, BitOutputStream out) {
 		while(true) {
 			int oneChar = in.readBits(BITS_PER_WORD);
@@ -68,6 +75,11 @@ public class HuffProcessor {
 		String code = codings[PSEUDO_EOF];
 		out.writeBits(code.length(), Integer.parseInt(code,2));
 	}
+	/**
+	 * write the tree to the beginning/header of the compressed file
+	 * @param root tree of encodings
+	 * @param out output stream of the compressed file
+	 */
 	private void writeHeader(HuffNode root, BitOutputStream out) {
 		if (root != null) {
 			if(root.myLeft==null&&root.myRight==null){
@@ -84,11 +96,22 @@ public class HuffProcessor {
 			}
 		}
 	}	
+	/**
+	 * From the trie/tree, create the encodings for each eight-bit
+	 * character/chunk and return them in an array of Strings
+	 * @param root
+	 * @return codes is an array of the encodings of each character
+	 * based on the tree. The value in the ith index of the array
+	 * is the encoding for that character
+	 */
 	private String[] makeCodingsFromTree(HuffNode root) {
 		String[] codes = new String[ALPH_SIZE + 1];
 		doTrails(codes,root,"");
 		return codes;
 	}
+	/**
+	 * Helper method for makeCodingsFromTree
+	 */
 	private void doTrails(String[] codes, HuffNode t, String thusfar) {
 		if (t != null) {
 			if (t.myLeft==null&&t.myRight==null) {
@@ -103,13 +126,19 @@ public class HuffProcessor {
 			}
 		}
 	}
+	/**
+	 * From frequencies, create the Huffman trie/tree used to create
+	 * encodings, following Huffman's algorithm.
+	 * @param freq frequencies of each character in file
+	 * @return tree that represents encoding to compress file
+	 */
 	private HuffNode makeTreeFromCounts(int[] freq) {
 		PriorityQueue<HuffNode> pq = new PriorityQueue<>();
-		int freqct = 0;
+//		int freqct = 0;
 		for (int i=0; i<freq.length; i++) {
 			if (freq[i] != 0) {
 				pq.add(new HuffNode(i,freq[i],null,null));
-				freqct += 1;
+//				freqct += 1;
 				if (myDebugLevel >= DEBUG_HIGH) {
 					System.out.printf("chunk %d occurs %d times%n", i, freq[i]);
 				}
@@ -128,6 +157,15 @@ public class HuffProcessor {
 		HuffNode root = pq.remove();
 		return root;
 	}
+	/**
+	 * Determine the frequency of every character/chunk in the
+	 * file being compressed and return them in an array.
+	 * @param input
+	 * @return an array of ints of size 257 for which the value
+	 * at the ith index gives the number of occurrences of that
+	 * character in the file. The 257th element represents the 
+	 * single occurrence of the PSEUDO_EOF character.
+	 */
 	private int[] readForCounts(BitInputStream input) {
 		int[] freqs = new int[ALPH_SIZE + 1];
 		while(true) {
@@ -161,6 +199,13 @@ public class HuffProcessor {
 		readCompressedBits(root, in, out);
 		out.close();
 	}
+	/**
+	 * Read the bits from the compressed file and use them to traverse
+	 * root-to-leaf paths, writing leaf values to the output file.
+	 * @param root tree used to decompress
+	 * @param input input stream
+	 * @param output output stream
+	 */
 	private void readCompressedBits(HuffNode root, BitInputStream input, BitOutputStream output) {
 		HuffNode current = root;
 		while(true) {
@@ -181,6 +226,14 @@ public class HuffProcessor {
 			}
 		}
 	}
+	/**
+	 * Reads the tree used to decompress. Tracing the path to each
+	 * leaf node gives the code for the character stored as the
+	 * value of the leaf node. The internal nodes have value 0.
+	 * @param in is the input
+	 * @return tree that stores the compressed codings of the
+	 * characters in the file.
+	 */
 	private HuffNode readTreeHeader(BitInputStream in) {
 		int oneBit = in.readBits(1);
 		//iterate right and left when you encounter 0 (internal nodes)
